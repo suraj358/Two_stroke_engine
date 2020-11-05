@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en-US">
+
+<head>
+    <meta charset="UTF-8">
+
+    <title></title>
+
+    <link rel="stylesheet" href="sins/MOMstyle.css" />
+
+    <script src='http://ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js'></script>
+    <script src='http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.0/jquery-ui.min.js'></script>
+    <script type="text/javascript" src= "sins/MOMscript.js"></script>
+    <script type="text/javascript" >
+
+        var simstatus=0;
+        var rotstatus=1;
+        // var commenttext="Some Text";
+        // var commentloc=0;
+
+        var trans= new point(250,300);
+
+        var o= new point(0,0,"");
+        var a= new point(0,0,"");
+        var b= new point(0,0,"");
+        var c= new point(0,0,"");
+
+        var theta2 = 40;
+        var phi=0;
+        var omega2=0;
+        var r=30,l=120;
+        var rpm=2000;
+        // var flaggrashof=true;
+        var canvas;
+        var ctx;
+        var simTimeId = setInterval("",'1000');
+        var pauseTime = setInterval("",'1000');
+        var time=0;
+        var ptx = [];
+        var pty = [];
+        var offset=0;
+
+        function trythis()
+        { 		alert();}
+
+        function editcss()
+        {
+            $('.variable').css('padding-top','40px');
+        }
+
+        function startsim()
+        {
+            simTimeId=setInterval("time=time+0.1; varupdate(); ",'100');
+        }
+
+        function simstate()
+        {
+            var imgfilename=document.getElementById('playpausebutton').src;
+            imgfilename = imgfilename.substring(imgfilename.lastIndexOf('/') + 1, imgfilename.lastIndexOf('.'));
+            if (imgfilename=="bluepausedull")
+            {
+                document.getElementById('playpausebutton').src="sins/blueplaydull.png";
+                clearInterval(simTimeId);
+                simstatus=1;
+                $('#theta2spinner').spinner("value",theta2);			//to set simulation parameters on pause -->
+                <!-- pauseTime=setInterval("varupdate();",'100'); -->
+            }
+            if (imgfilename=="blueplaydull")
+            {
+                time=0;
+                clearInterval(pauseTime);
+                document.getElementById('playpausebutton').src="sins/bluepausedull.png";
+                simTimeId=setInterval("time=time+0.1; varupdate(); ",'100');
+                simstatus=0;
+            }
+        }
+
+        function rotstate()
+        {
+            var imgfilename=document.getElementById('rotationbutton').src;
+            imgfilename = imgfilename.substring(imgfilename.lastIndexOf('/') + 1, imgfilename.lastIndexOf('.'));
+            if (imgfilename=="bluecwdull")
+            {
+                document.getElementById('rotationbutton').src="sins/blueccwdull.png";
+                rotstatus=-1;
+            }
+            if (imgfilename=="blueccwdull")
+            {
+                document.getElementById('rotationbutton').src="sins/bluecwdull.png";
+                rotstatus=1;
+            }
+        }
+
+        function varinit()
+        {
+            varchange();
+
+            $('#r2slider').slider("value", 3000);
+            $('#r2spinner').spinner("value", 3000);
+        }
+
+        function varchange()
+        {
+
+            $('#r2slider').slider({ max : 8000, min : 1000, step : 2000 });		// slider initialisation : jQuery widget
+            $('#r2spinner').spinner({ max : 8000, min : 1000, step : 2000 });		// number initialisation : jQuery widget
+
+            $( "#r2slider" ).on( "slide", function( e, ui ) { $('#r2spinner').spinner("value",ui.value); ptx=[]; pty=[]; } );
+            $( "#r2spinner" ).on( "spin", function( e, ui ) { $('#r2slider').slider("value",ui.value); ptx=[]; pty=[]; } );
+            $( "#r2spinner" ).on( "change", function() {  varchange() } );
+            varupdate();
+
+        }
+
+        function varupdate()
+        {
+
+            $('#r2slider').slider("value", $('#r2spinner').spinner('value'));
+
+            rpm=$('#r2spinner').spinner("value");
+            omega2=(2*Math.PI*rpm)/60;
+            if(!simstatus)
+            {
+
+                theta2=theta2+(1*0.0007*deg(omega2));
+                theta2=theta2%360;
+                if(theta2<0)theta2+=360;
+
+            }
+            if(simstatus)
+            {
+                theta2=$('#theta2spinner').spinner("value");
+                printcomment("Crank at "+theta2+"&deg; <br>Position of slider from Crank Center = "+roundd(b.xcoord-o.xcoord,2)+"cm",2);
+
+            }
+            if(rotstatus==1){
+                o.xcoord=0;
+                o.ycoord=0;
+
+                a.xcoord=o.xcoord+r*Math.sin(rad(theta2));
+                a.ycoord=o.ycoord+r*Math.cos(rad(theta2));
+
+                phi=deg(Math.asin((r*Math.sin(rad(theta2)))/l));
+                b.xcoord=0;
+                b.ycoord=a.ycoord+l*Math.cos(rad(phi));
+            }
+
+            else
+            {
+                o.xcoord=0;
+                o.ycoord=0;
+
+                a.xcoord=o.xcoord+r*Math.cos(rad(theta2));
+                a.ycoord=o.ycoord+r*Math.sin(rad(theta2));
+
+                phi=deg(Math.acos((r*Math.cos(rad(theta2)))/l));
+                b.xcoord=0;
+                b.ycoord=a.ycoord+l*Math.sin(rad(phi));
+            }
+            // printcomment("Limits RPM value : "+$('#r3spinner').spinner("option","min")+" and\n "+$('#r3spinner').spinner("option","max")+" ",1);
+            draw();
+            console.log(rpm);
+            console.log(omega2);
+            console.log(phi);
+        }
+
+        function draw()
+        {
+            canvas = document.getElementById("simscreen");
+            ctx = canvas.getContext("2d");
+            ctx.clearRect(0,0,550,400);
+
+            pointtrans(o,trans);
+            pointtrans(a,trans);
+            pointtrans(b,trans);
+            pointtrans(c,trans);
+
+            ctx.beginPath();
+            ctx.lineWidth=10;
+
+            ctx.moveTo(168,200);
+            ctx.lineTo(168,285);
+
+            ctx.moveTo(165,203);
+            ctx.lineTo(200,172);
+
+            ctx.stroke();
+            ctx.closePath();
+
+
+            ctx.beginPath();
+            ctx.lineWidth=13;
+
+            ctx.moveTo(200,178);
+            ctx.lineTo(200,120);
+            ctx.lineTo(305,120);
+
+            ctx.moveTo(200,200);
+            ctx.lineTo(200,250);
+
+            ctx.moveTo(300,150);
+            ctx.lineTo(300,120);
+
+            ctx.moveTo(250,120);
+            ctx.lineTo(250,90);
+
+            ctx.moveTo(300,210);
+            ctx.lineTo(300,237);
+
+            ctx.stroke();
+            ctx.closePath();
+
+            ctx.beginPath();
+            ctx.lineWidth=10;
+            ctx.moveTo(294,170);
+            ctx.lineTo(330,170);
+
+            ctx.moveTo(294,150);
+            ctx.lineTo(330,150);
+
+            ctx.moveTo(294,190);
+            ctx.lineTo(330,190);
+
+            ctx.moveTo(294,210);
+            ctx.lineTo(330,210);
+
+            ctx.stroke();
+            ctx.closePath();
+
+            ctx.beginPath();
+            ctx.lineWidth=15;
+            ctx.arc(250,300,85,-0.3*Math.PI,1.11*Math.PI);
+            ctx.stroke();
+            ctx.closePath();
+
+            ctx.beginPath();
+            ctx.lineWidth=5;
+            ctx.arc(o.xcoord,o.ycoord,30,0,2.5*Math.PI,false);
+            ctx.fillStyle="brown";
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+
+            pointjoin(o,a,ctx,"black",5);
+            pointdisp(o,ctx,0,"black","black",'','','');
+            ctx.strokeStyle="black";
+            ctx.lineWidth=3;
+            ctx.stroke();
+
+            pointjoin(a,b,ctx,"black",12);
+            pointdisp(a,ctx,5,"black","black",'','','');
+            ctx.strokeStyle="blue";
+            ctx.linejoin="round";
+            ctx.arc(a.xcoord,a.ycoord,0,0,2*Math.PI,false);
+            ctx.stroke();
+            pointdisp(b,ctx,1,"black","black",'','','');
+
+            ctx.beginPath();
+            ctx.lineWidth=5;
+            ctx.globalAlpha=0.8;
+            drawrect(b,67,10,0,ctx,"brown","red",1);
+            ctx.globalAlpha=1;
+            ctx.stroke();
+            ctx.closePath();
+
+            ctx.lineWidth=20;
+            ctx.moveTo(c.xcoord,c.ycoord);
+            ctx.lineTo(c.xcoord,c.ycoord);
+            ctx.stroke();
+            ctx.closePath();
+
+            ctx.beginPath();
+            ctx.lineWidth=2;
+            ctx.moveTo(250,80);
+            ctx.lineTo(250,90);
+            ctx.stroke();
+            ctx.closePath();
+
+        }
+
+        function printcomment(commenttext,commentloc)
+        {
+            if(commentloc===0)
+            {
+                document.getElementById('commentboxright').style.visibility='hidden';
+                document.getElementById('commentboxleft').style.width='570px';
+                document.getElementById('commentboxleft').innerHTML = commenttext;
+            }
+            else if(commentloc===1)
+            {
+                document.getElementById('commentboxright').style.visibility='visible';
+                document.getElementById('commentboxleft').style.width='285px';
+                document.getElementById('commentboxleft').innerHTML = commenttext;
+            }
+            else if(commentloc===2)
+            {
+                document.getElementById('commentboxright').style.visibility='visible';
+                document.getElementById('commentboxleft').style.width='285px';
+                document.getElementById('commentboxright').innerHTML = commenttext;
+            }
+            else
+            {
+                document.getElementById('commentboxright').style.visibility='hidden';
+                document.getElementById('commentboxleft').style.width='570px';
+                document.getElementById('commentboxleft').innerHTML = "<center>please report this issue to surajacharya213@gmail.com</center>";
+            }
+        }
+
+    </script>
+
+</head>
+
+<body onload="editcss(); startsim(); varinit();">
+
+<noscript>
+    The simulation requires JavaScript to be enabled.
+</noscript>
+<div id="container">
+
+
+    <div id="simtitle"></div>
+
+    <canvas id="simscreen" height="400px" width="550px"></canvas>
+
+    <div id="titleincanvas"></div>
+    <div id="datatable1" class="datatable"></div>
+    <div id="datatable2" class="datatable"></div>
+
+    <div id="commentboxleft"></div>
+    <div id="commentboxright"></div>
+
+    <div id="vartitle">VARIABLES</div>
+
+    <div id="variables">
+        <div class="variable">
+            <div class="varname">
+                <p  title="rpm">RPM</p>
+                <input id="r2spinner"type="number" placeholder="2000" autocomplete="off" ></div>
+            <div id="r2slider"></div>
+        </div>
+    </div>
+
+    <div id="ctrltitle">CONTROLS</div>
+
+    <!-- Region for User controls of simulation -->
+    <div id="controls">
+        <img id="playpausebutton" onclick="simstate()" src="sins/bluepausedull.png" />
+        <img id="rotationbutton" onclick="rotstate()" src="sins/bluecwdull.png" />
+
+    </div>
+
+    <div id="copyright" title="Developer : Supreeth Dev"> Copyright &copy; SOLVE The Virtual Lab @ NITK Surathkal </div>
+
+</div>
+
+</body>
+</html>
